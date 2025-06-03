@@ -1,12 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const app = express();
 
 require('dotenv').config();
-app.use(cors());
+
+// Konfigurasi CORS lebih ketat
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const articles = require('./api/articles');
 app.use('/api/articles', articles);
@@ -14,10 +19,5 @@ app.use('/api/articles', articles);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  // Buat folder uploads jika belum ada
-  const fs = require('fs');
-  const dir = './uploads';
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
+  console.log(`Upload directory: ${path.join(__dirname, 'uploads')}`);
 });
