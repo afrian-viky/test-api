@@ -1,17 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.SUPABASE_DB_URL,
-  ssl: { rejectUnauthorized: false }
-});
+// Simpan data dalam memori (array)
+let articles = [
+  {
+    id: 1,
+    title: 'Artikel Contoh',
+    author: 'John Doe',
+    content: 'Ini adalah konten artikel contoh.',
+    category: 'Teknologi',
+    image_url: 'https://example.com/image.jpg',
+    created_at: new Date().toISOString()
+  }
+];
 
 // GET all articles
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM articles ORDER BY created_at DESC');
-    res.json(result.rows);
+    // Urutkan berdasarkan created_at DESC
+    const sortedArticles = [...articles].sort((a, b) =>
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+    res.json(sortedArticles);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -20,12 +30,24 @@ router.get('/', async (req, res) => {
 // POST new article
 router.post('/', async (req, res) => {
   const { title, author, content, category, image_url } = req.body;
+
+  if (!title || !author || !content) {
+    return res.status(400).json({ error: 'Title, author, and content are required' });
+  }
+
   try {
-    const result = await pool.query(
-      'INSERT INTO articles (title, author, content, category, image_url, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *',
-      [title, author, content, category, image_url]
-    );
-    res.status(201).json(result.rows[0]);
+    const newArticle = {
+      id: articles.length > 0 ? Math.max(...articles.map(a => a.id)) + 1 : 1,
+      title,
+      author,
+      content,
+      category: category || 'Umum',
+      image_url: image_url || '',
+      created_at: new Date().toISOString()
+    };
+
+    articles.push(newArticle);
+    res.status(201).json(newArticle);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -35,12 +57,25 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { title, author, content, category, image_url } = req.body;
+
   try {
-    const result = await pool.query(
-      'UPDATE articles SET title=$1, author=$2, content=$3, category=$4, image_url=$5 WHERE id=$6 RETURNING *',
-      [title, author, content, category, image_url, id]
-    );
-    res.json(result.rows[0]);
+    const index = articles.findIndex(a => a.id === parseInt(id));
+
+    if (index === -1) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const updatedArticle = {
+      ...articles[index],
+      title: title || articles[index].title,
+      author: author || articles[index].author,
+      content: content || articles[index].content,
+      category: category || articles[index].category,
+      image_url: image_url || articles[index].image_url
+    };
+
+    articles[index] = updatedArticle;
+    res.json(updatedArticle);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -49,8 +84,15 @@ router.put('/:id', async (req, res) => {
 // DELETE article
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
+
   try {
-    await pool.query('DELETE FROM articles WHERE id=$1', [id]);
+    const index = articles.findIndex(a => a.id === parseInt(id));
+
+    if (index === -1) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    articles = articles.filter(a => a.id !== parseInt(id));
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
