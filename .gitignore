@@ -1,0 +1,13 @@
+# Abaikan folder node_modules
+node_modules/
+
+# Abaikan file environment
+.env
+
+# Opsional: hasil build jika pakai Vite/Webpack
+dist/
+build/
+
+# Opsional: log & system file
+npm-debug.log
+.DS_Store
